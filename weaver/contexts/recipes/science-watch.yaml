@@ -1,0 +1,37 @@
+# science-watch recipe — track a scientific field.
+# Replace <FIELD> tokens with the specific field (e.g. "structural biology",
+# "quantum information", "materials science") before first ingest.
+display_name: Science Watch
+kind: science-watch
+description: |
+  Scientific-field watch. Ingests research blogs, arXiv subject feeds,
+  institutional press releases, and review articles. Edit the manifest to
+  name the specific field and adjacent subfields.
+
+focus:
+  primary_topics:
+    - "<FIELD>"
+    - new results and preprints
+    - methods and instrumentation
+    - review articles
+    - debates and replications
+  entity_types:
+    - paper
+    - person          # PIs, lead authors
+    - institution
+    - concept         # methods, models, hypotheses
+    - technology      # instruments, datasets, software
+  exclude_topics:
+    - popular-science explainers without new content
+    - award announcements (unless tied to specific work)
+  extra_instruction: |
+    Record paper titles + arXiv / DOI identifiers under `references`.
+    For each author, record affiliation when available. Extract named
+    methods, models, and datasets under `technology`.
+
+decay:
+  news_half_life_days: 90        # science moves slower than news
+  post_half_life_days: 180
+  concept_half_life_days: 1460   # foundational concepts barely decay
+  project_half_life_days: 365
+  person_no_decay: true

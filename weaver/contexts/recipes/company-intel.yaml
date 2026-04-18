@@ -1,0 +1,39 @@
+# company-intel recipe — track a specific company or market.
+# After creating, edit the manifest: add the company's name, products, and
+# market focus to primary_topics; curate `sources.yaml` with their blog,
+# press releases, and reputable industry coverage.
+display_name: Company Intelligence
+kind: company-intel
+description: |
+  Focused watch on one company or adjacent market. Pulls in company blog,
+  press coverage, product updates, and competitor mentions. Edit this
+  manifest after creation to name the target company.
+
+focus:
+  primary_topics:
+    - "<TARGET COMPANY NAME>"
+    - product launches and updates
+    - partnerships and acquisitions
+    - executive moves
+    - competitive positioning
+    - customer case studies
+  entity_types:
+    - company
+    - product
+    - person
+    - market
+    - technology
+  exclude_topics:
+    - unrelated industry news
+    - consumer-side reviews unless canonical
+  extra_instruction: |
+    Extract product names under `projects`. Extract competitor and partner
+    companies as separate `company` entities. Flag executive titles on
+    people (CEO, CTO, VP of X).
+
+decay:
+  news_half_life_days: 30
+  post_half_life_days: 60
+  concept_half_life_days: 365
+  project_half_life_days: 180
+  person_no_decay: true

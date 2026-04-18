@@ -1,0 +1,58 @@
+# Applicant profile — copy to contexts/<ctx>/applicant/profile.yaml and edit.
+# profile.yaml is gitignored; nothing personal gets committed.
+
+# Identity
+first_name: Your
+last_name: Name
+full_name: Your Name
+email: you@example.com
+phone: 555-555-5555
+city: City, ST
+state: ST
+country: United States
+address: City, ST
+
+# Online presence
+linkedin: https://linkedin.com/in/your-handle
+website: https://yourwebsite.example
+github: https://github.com/yourhandle
+
+# Work authorization + preferences
+us_authorized: true
+needs_sponsorship: false
+open_to_relocation: true
+relocation_destinations: Open to any location for the right role
+open_to_office_25: true
+
+# Experience + pay
+years_experience: "25"
+salary: "$250,000"
+start_date: 2 weeks notice
+notice_period: 2 weeks
+
+# Clearance (leave blank if not applicable)
+clearance_level: "TS/SCI"
+clearance_active: false
+clearance_history: |
+  <paragraph-length narrative answer for "which government agencies /
+   programs have you worked with?" — used verbatim when that question
+   appears on an application form.>
+
+# DoD / Federal only — populated when the role is flagged as
+# DoD/Federal/Defense/Public-Sector. Include site names if relevant
+# (e.g. CENTAF, PACAF, CENTCOM). Blank for non-DoD roles.
+dod_experience: ""
+
+# Boilerplate free-text
+how_heard: |
+  Short answer for "how did you hear about us?"
+interviewed_before: false
+additional_info: ""
+personal_preferences: ""
+deadlines: No hard deadlines; flexible for the right role.
+
+# Files — resolved against contexts/<ctx>/applicant/
+resume_md: resume.md
+cover_letter_md: cover-letter.md
+resume_pdf: Your_Name_Resume.pdf
+cover_letter_pdf: Your_Name_Cover_Letter.pdf

@@ -1,0 +1,53 @@
+; Weaver global defaults — copy to defaults.ini and edit.
+; defaults.ini is gitignored.
+
+[general]
+; Default context to use when --context is not passed.
+default_context = default
+
+; How many parallel workers for ingest (clones, parses).
+parallel_workers = 4
+
+; Freshness threshold (hours) before a re-sync is suggested.
+cache_freshness_hours = 24
+
+[paths]
+; Where contexts are stored. Relative to this file's parent-parent (repo root).
+contexts_root = contexts
+
+; Corporate CA bundle for providers sitting behind a proxy (optional).
+; proxy_cert_path = /path/to/netscope.pem
+
+[secrets]
+; auto | warden | keychain | libsecret | windows | encrypted_file | env
+; `auto` picks `warden` when WARDEN_SOCKET is set or a daemon is detected.
+; `warden` forces routing through the guardian; sandbox cannot read values.
+backend = auto
+encrypted_file_path = _config/.secrets.enc
+
+[parsers]
+timeout_s = 30
+max_bytes = 50000000
+pdf_fallback_to_pdfplumber = true
+xlsx_reader = calamine
+regex_engine = re2
+
+[rag]
+; Embedding backend: sentence-transformers, openai, local
+embedding_backend = sentence-transformers
+embedding_model = all-MiniLM-L6-v2
+chunk_size = 800
+chunk_overlap = 120
+top_k = 8
+
+[graph]
+; Which languages to extract AST from (tree-sitter-languages names).
+languages = python,typescript,javascript,go,rust,java,ruby,c,cpp
+max_file_bytes = 2000000
+
+[auth]
+; Enforce the precedence chain strictly. Leave true unless debugging.
+strict_precedence = true
+
+; Non-interactive allow-list for Playwright scrape in CI. Default: refuse.
+allow_playwright_in_ci = false

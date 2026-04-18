@@ -1,0 +1,38 @@
+# framework-watch recipe — track a specific software framework / library.
+# Replace <FRAMEWORK> with the target (e.g. "LangChain", "LlamaIndex",
+# "Temporal", "DuckDB"). Curate `sources.yaml` with the project's blog,
+# GitHub release feed, and the maintainer's personal blog.
+display_name: Framework Watch
+kind: knowledge-domain
+description: |
+  Track a specific framework or library: releases, breaking changes,
+  extension points, third-party integrations, and adoption patterns.
+
+focus:
+  primary_topics:
+    - "<FRAMEWORK>"
+    - release notes and changelogs
+    - breaking changes and migrations
+    - extension points / plugin APIs
+    - third-party integrations
+    - benchmarks and performance
+  entity_types:
+    - project
+    - concept      # patterns/APIs introduced by the framework
+    - technology   # upstream/downstream deps
+    - person       # maintainers, prominent users
+    - post
+  exclude_topics:
+    - generic "best of" listicles
+    - unrelated framework comparisons
+  extra_instruction: |
+    Treat the framework itself and every one of its submodules as
+    `project` entities. Record version numbers in summaries when present.
+    Flag deprecations and breaking changes explicitly in the summary.
+
+decay:
+  news_half_life_days: 45
+  post_half_life_days: 90
+  concept_half_life_days: 365
+  project_half_life_days: 180
+  person_no_decay: true

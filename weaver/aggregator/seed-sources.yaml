@@ -1,0 +1,62 @@
+# Seed sources for the ai-corpus context.
+#
+# Override by creating `_config/aggregator/sources.yaml` at the repo root
+# (user-local; gitignored). If present, that file replaces this one.
+#
+# Each entry:
+#   name:            short slug, used as cache dir
+#   kind:            rss | atom  (html_listing planned; not implemented yet)
+#   url:             feed URL
+#   author:          default author if the feed doesn't declare one
+#   fetch_article_bodies: if true, fetch each item's link HTML too
+#   throttle_seconds: minimum seconds between fetches of this source
+
+sources:
+  - name: martin-fowler
+    kind: atom
+    url: https://martinfowler.com/feed.atom
+    author: Martin Fowler
+    fetch_article_bodies: true
+    throttle_seconds: 3600
+
+  - name: simon-willison
+    kind: atom
+    url: https://simonwillison.net/atom/everything/
+    author: Simon Willison
+    fetch_article_bodies: true
+    throttle_seconds: 3600
+
+  - name: lil-log
+    kind: rss
+    url: https://lilianweng.github.io/index.xml
+    author: Lilian Weng
+    fetch_article_bodies: true
+    throttle_seconds: 86400
+
+  - name: eugene-yan
+    kind: rss
+    url: https://eugeneyan.com/rss/
+    author: Eugene Yan
+    fetch_article_bodies: true
+    throttle_seconds: 86400
+
+  - name: huggingface-blog
+    kind: rss
+    url: https://huggingface.co/blog/feed.xml
+    author: Hugging Face
+    fetch_article_bodies: true
+    throttle_seconds: 3600
+
+  - name: arxiv-cs-ai
+    kind: rss
+    url: http://export.arxiv.org/rss/cs.AI
+    author: arXiv
+    fetch_article_bodies: false
+    throttle_seconds: 86400
+
+  - name: hacker-news-front
+    kind: rss
+    url: https://hnrss.org/frontpage
+    author: Hacker News
+    fetch_article_bodies: false
+    throttle_seconds: 3600

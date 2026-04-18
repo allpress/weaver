@@ -1,0 +1,41 @@
+# ai-corpus recipe — AI & agentic programming knowledge corpus.
+display_name: AI & Agentic Programming
+kind: knowledge-domain
+description: |
+  Canonical corpus of AI, agentic programming, and LLM-adjacent thought
+  leadership. Tracks people, projects, concepts, and techniques across
+  well-known blogs and research feeds.
+
+focus:
+  primary_topics:
+    - agentic programming
+    - large language models
+    - retrieval-augmented generation
+    - agent architectures and tool use
+    - evaluation and benchmarking of LLMs
+    - AI system design and prompting
+    - embeddings and vector search
+    - code assistance and AI-augmented engineering
+  entity_types:
+    - person
+    - project
+    - concept
+    - technology
+    - paper
+    - post
+  exclude_topics:
+    - celebrity gossip
+    - general tech industry drama unrelated to AI
+    - personal lifestyle posts
+  extra_instruction: |
+    Prioritize substantive technical content over announcements. When an
+    article mentions a specific model (GPT-4, Claude, Llama), record it under
+    technologies. Prefer canonical person names (full name as used in
+    publications).
+
+decay:
+  news_half_life_days: 45
+  post_half_life_days: 90
+  concept_half_life_days: 730
+  project_half_life_days: 180
+  person_no_decay: true

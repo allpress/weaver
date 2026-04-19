@@ -64,6 +64,85 @@ def wait_for(context_name: str, from_domain: str, subject_contains: str | None,
     _emit(result, as_json=as_json)
 
 
+@group.command("classify")
+@click.option("--context", "context_name", default="ai-corpus", show_default=True)
+@click.option("--from", "from_domain", default=None,
+              help="Filter messages by sender domain before classifying.")
+@click.option("--since", default=None,
+              help="Only messages since this date (YYYY-MM-DD or ISO).")
+@click.option("--limit", default=50, show_default=True)
+@click.option("--mailbox", default="INBOX", show_default=True)
+@click.option("--category", "category_filter", default=None,
+              help="Only show a specific category "
+                   "(ack / rejection / interview / followup / auto / unknown).")
+@click.option("--json", "as_json", is_flag=True)
+def classify(context_name: str, from_domain: str | None, since: str | None,
+             limit: int, mailbox: str, category_filter: str | None,
+             as_json: bool) -> None:
+    """Classify recent inbox messages by recruiter-email category.
+
+    Rule-based (no LLM, no network beyond the IMAP fetch). Useful for
+    tracking which applications have had responses, what kind, and
+    which need a human look. See ``weaver.submitter.mail_classifier``.
+    """
+    from weaver.submitter.mail_classifier import classify as _classify
+
+    params: dict[str, object] = {"context": context_name, "limit": limit,
+                                  "mailbox": mailbox}
+    if from_domain:
+        params["from_domain"] = from_domain
+    if since:
+        params["since"] = since
+    messages = _call("mail.check", **params)
+    if not isinstance(messages, list):
+        raise click.ClickException(
+            f"unexpected mail.check return: {type(messages).__name__}"
+        )
+
+    rows: list[dict[str, object]] = []
+    counts: dict[str, int] = {}
+    for m in messages:
+        if not isinstance(m, dict):
+            continue
+        c = _classify(m)
+        if category_filter and c.category != category_filter:
+            continue
+        rows.append({
+            "date": m.get("date"),
+            "from": m.get("from"),
+            "subject": m.get("subject"),
+            "category": c.category,
+            "confidence": c.confidence,
+            "signal": c.signal,
+        })
+        counts[c.category] = counts.get(c.category, 0) + 1
+
+    if as_json:
+        click.echo(jsonlib.dumps({"summary": counts, "messages": rows},
+                                  indent=2, default=str))
+        return
+
+    if not rows:
+        click.echo("(no messages matched)")
+        return
+
+    # Category summary.
+    total = sum(counts.values())
+    order = ["interview", "followup", "rejection", "ack", "auto", "unknown"]
+    pieces = [f"{k}={counts[k]}" for k in order if counts.get(k)]
+    click.echo(f"{total} messages  ·  " + "  ".join(pieces))
+    click.echo("-" * 100)
+    for r in rows:
+        cat = str(r["category"])
+        conf = str(r["confidence"])
+        marker = {"interview": "★", "followup": "!", "rejection": "✗",
+                  "ack": "✓", "auto": ".", "unknown": "?"}.get(cat, " ")
+        click.echo(f"{marker} {cat:10s}[{conf}]  "
+                   f"{str(r['date'])[:19]:19s}  "
+                   f"{str(r['from'])[:35]:35s}  "
+                   f"{str(r['subject'])[:50]}")
+
+
 @group.command("verify-url")
 @click.option("--context", "context_name", default="ai-corpus", show_default=True)
 @click.option("--from", "from_domain", required=True,

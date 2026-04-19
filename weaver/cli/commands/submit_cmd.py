@@ -290,11 +290,58 @@ def apply_cmd(context: str, slugs: tuple[str, ...], approved: bool,
         if report.output:
             safe = {k: v for k, v in report.output.items() if k != "screenshot_b64"}
             click.echo(f"  output: {json.dumps(safe)[:200]}")
+            _persist_submission_evidence(store, slug, prefix,
+                                          plan, report.output, send=send)
 
 
 def _now_iso() -> str:
     import datetime as _dt
     return _dt.datetime.now(tz=_dt.timezone.utc).isoformat()
+
+
+def _persist_submission_evidence(store: "PlanStore", slug: str, prefix: str,
+                                  plan: "JobPlan", output: dict[str, Any],
+                                  *, send: bool) -> None:   # type: ignore[name-defined]
+    """Write the submission evidence back onto the plan JSON so the
+    dashboard and later audits can see what happened.
+
+    Records: submitted flag, timestamp, submission verification payload
+    (``output['submission']``: url_changed, confirmation_found,
+    matched_phrase, response_text preview, final_url, page_title).
+    Only marks ``submitted`` True when the submitter reported confirmed.
+    """
+    try:
+        path = store.path_for(slug, prefix=prefix)
+        data = json.loads(path.read_text())
+    except Exception as e:   # noqa: BLE001
+        click.echo(f"  warn: could not load {slug} to persist evidence: {e}")
+        return
+
+    sub = output.get("submission") or {}
+    confirmed = bool(sub.get("confirmed"))
+    evidence = {
+        "ranAt": _now_iso(),
+        "sendMode": bool(send),
+        "filled": int(output.get("filled") or 0),
+        "flagged": list(output.get("flagged") or []),
+        "unhandled": list(output.get("unhandled") or []),
+        "clicked": bool(sub.get("clicked")),
+        "confirmed": confirmed,
+        "urlChanged": bool(sub.get("url_changed")),
+        "confirmationFound": bool(sub.get("confirmation_found")),
+        "matchedPhrase": sub.get("matched_phrase") or "",
+        "finalUrl": sub.get("final_url") or output.get("final_url") or "",
+        "pageTitle": sub.get("page_title") or "",
+        "responseText": sub.get("response_text") or "",
+    }
+    # Preserve history — keep a list.
+    history = list(data.get("submissionHistory") or [])
+    history.append(evidence)
+    data["submissionHistory"] = history[-10:]   # cap at 10 entries
+    data["submission"] = evidence   # latest
+    if confirmed and send:
+        data["submitted"] = True
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
 # click 8 doesn't love Any as a type hint in pep-604 style below in some envs

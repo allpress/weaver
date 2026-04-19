@@ -36,6 +36,8 @@ class Applicant:
     full_name: str = "<full-name>"
     email: str = "<your-email@example.com>"
     phone: str = "<phone-number>"
+    phone_country_code: str = "+1"    # default US — used when a form
+                                      # has a separate country-code field
     city: str = "<city, state>"
     state: str = ""
     country: str = "United States"

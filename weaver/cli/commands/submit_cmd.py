@@ -268,6 +268,7 @@ def apply_cmd(context: str, slugs: tuple[str, ...], approved: bool,
     w = GreenhouseApplicantPlain()
 
     from dataclasses import asdict as _asdict
+    applicant_profile = applicant.to_dict()
     for slug, plan in picks:
         click.echo("")
         click.echo(f"=== {plan.title} ===")
@@ -278,9 +279,12 @@ def apply_cmd(context: str, slugs: tuple[str, ...], approved: bool,
                 "cover_letter_pdf_path": cover_pdf_str,
                 "headless": headless,
                 "pause_before_submit": not send,
+                "applicant_profile": applicant_profile,
             },
             secret_resolver=None,
-            emit=lambda e: click.echo(f"  [{e.kind}] {json.dumps(e.data)[:180]}"),
+            emit=lambda e: click.echo(
+                f"  [{e.kind}] {json.dumps(e.data)[:1200]}"
+            ),
         )
         click.echo(f"  → status={report.status} ok={report.ok}")
         if report.output:

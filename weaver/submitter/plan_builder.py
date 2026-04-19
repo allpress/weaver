@@ -123,6 +123,22 @@ _DOD_TITLE_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
 )
 
 
+_YESNO_INTENT_RE = re.compile(
+    r"^\s*(are|do|did|have|has|will|would|can|could|should|may|is|was|were)\s+you\b",
+    re.I,
+)
+
+
+def _looks_like_yesno_intent(label: str) -> bool:
+    """Heuristic: does this label read like a yes/no question?
+
+    Matches free-text questions like "Are you fluent in Arabic?" where
+    a narrative answer would be worse than an empty one. Does not match
+    open-ended prompts ("Tell us about…", "Why are you interested in…").
+    """
+    return bool(_YESNO_INTENT_RE.search(label or ""))
+
+
 def is_dod_role(title: str) -> bool:
     """Title-pattern check for DoD / Federal / Defense / Public-Sector roles."""
     return any(p.search(title or "") for p in _DOD_TITLE_PATTERNS)
@@ -227,6 +243,23 @@ class PlanBuilder:
         if bp is not None:
             return QuestionPlan(**base, proposedAnswer=bp["answer"], strategy=bp["strategy"])
 
+        # Free-text questions with a yes/no intent. Greenhouse sometimes
+        # surfaces these as ``input_text`` rather than ``multi_value_single_select``
+        # (e.g. a simple text box asking "Are you open to relocation?"). Consult
+        # the profile rather than falling through to narrative voice.
+        yn = self._yesno_for_label(label)
+        if yn is not None:
+            return QuestionPlan(**base, proposedAnswer=yn,
+                                strategy=f"yesno-text-{yn.lower()}")
+
+        # If a question reads like a yes/no ("Are/Do/Have you …") but we have
+        # no rule for it (e.g. "Are you fluent in Arabic?"), mark as unhandled.
+        # Severance-voice on a yes/no question submits nonsense.
+        if _looks_like_yesno_intent(label):
+            return QuestionPlan(**base, proposedAnswer="", strategy="unhandled",
+                                note="yes/no-style question with no matching profile rule; "
+                                      "fill manually before submitting")
+
         # Narrative open-ended → voice.
         if should_use_voice(label):
             if self._top_tier:
@@ -271,6 +304,12 @@ class PlanBuilder:
             return {"answer": a.address, "strategy": "precomputed"}
         if re.search(r"address.*(work|from which you plan)", label, re.I):
             return {"answer": a.address, "strategy": "precomputed"}
+        if re.search(r"(what|which).*country|country.*(located|reside|live|based)|country of residence",
+                     label, re.I):
+            return {"answer": a.country, "strategy": "precomputed"}
+        if re.search(r"(what|which).*(city|state)|city.*(located|reside|live|based)",
+                     label, re.I):
+            return {"answer": a.city, "strategy": "precomputed"}
 
         if re.search(r"years? of.*experience", label, re.I):
             return {"answer": a.years_experience, "strategy": "precomputed"}
@@ -307,51 +346,74 @@ class PlanBuilder:
         if not values:
             return None
 
-        if re.search(r"(authorized|eligible).*work|legally (authorized|able)", label, re.I):
-            yes = _pick_option(values, lambda v: "yes" in v)
-            if yes:
-                return {"answer": yes["label"], "value": yes["value"], "strategy": "select-yes"}
+        # Shared yes/no rule set (profile-driven).
+        yn = self._yesno_for_label(label)
+        if yn is not None:
+            target = yn.lower()
+            pick = _pick_option(values,
+                                 lambda v: v == target or v.startswith(target))
+            if pick:
+                return {"answer": pick["label"], "value": pick["value"],
+                        "strategy": f"select-{target}"}
 
-        if re.search(r"sponsor|visa", label, re.I):
-            no = _pick_option(values, lambda v: "no" in v)
-            if no:
-                return {"answer": no["label"], "value": no["value"], "strategy": "select-no"}
-
-        if re.search(r"relocation|open to (relocat|working in-person|office)|in.?person.*office|office.*time", label, re.I):
-            yes = _pick_option(values, lambda v: v == "yes" or v.startswith("yes"))
-            if yes:
-                return {"answer": yes["label"], "value": yes["value"], "strategy": "select-yes"}
-
-        if re.search(r"interviewed.*before|previously interviewed|applied before", label, re.I):
-            no = _pick_option(values, lambda v: v == "no" or v.startswith("no"))
-            if no:
-                return {"answer": no["label"], "value": no["value"], "strategy": "select-no"}
-
-        if re.search(r"active.*(security )?clearance|active clearance|currently hold.*clearance", label, re.I):
-            no = _pick_option(values, lambda v: v == "no" or v.startswith("no"))
-            if no:
-                return {"answer": no["label"], "value": no["value"], "strategy": "select-no"}
-
+        # Clearance level (distinct from active/inactive yes/no).
         if re.search(r"highest.*(level.*)?clearance|clearance level", label, re.I):
             ts = _pick_option(values, lambda v: "ts/sci" in v)
             if ts:
                 return {"answer": ts["label"], "value": ts["value"], "strategy": "select-yes"}
 
-        if re.search(r"gender|race|ethnicity|veteran|disability|demographic|hispanic|latin", label, re.I):
+        # Protected-class demographics → decline.
+        if re.search(r"gender|race|ethnicity|veteran|disability|demographic|hispanic|latin",
+                     label, re.I):
             dec = _pick_option(values, lambda v: (
                 "decline" in v or "prefer not" in v or "don't wish" in v or "do not wish" in v))
             if dec:
                 return {"answer": dec["label"], "value": dec["value"], "strategy": "select-decline"}
 
+        # "How did you hear" → Other (we have a custom how_heard text answer).
         if re.search(r"how did you (hear|find)|source", label, re.I):
             other = _pick_option(values, lambda v: "other" in v)
             if other:
                 return {"answer": other["label"], "value": other["value"], "strategy": "select-other"}
 
+        # Generic "Are/Can/Will/Do/Have you ..." → Yes, if a yes option exists.
+        # Only as a last resort — anything more specific should match above.
         yes = _pick_option(values, lambda v: v == "yes")
         if yes and re.match(r"^(are|can|will|do|have) you", label, re.I):
             return {"answer": yes["label"], "value": yes["value"], "strategy": "select-yes"}
 
+        return None
+
+    # -- yes/no dispatch (shared by select + free-text paths) --
+
+    def _yesno_for_label(self, label: str) -> str | None:
+        """Return "Yes" / "No" / None for a known yes/no label.
+
+        Consults the applicant profile rather than hardcoding, so the
+        same rule set stays honest when the profile changes. Used both
+        when filling multi-select options and when filling input_text
+        fields whose label reads like a yes/no prompt.
+        """
+        a = self._app
+        if re.search(r"(authorized|eligible).*work|legally (authorized|able).*work",
+                     label, re.I):
+            return "Yes" if a.us_authorized else "No"
+        if re.search(r"sponsor|visa", label, re.I):
+            return "No" if not a.needs_sponsorship else "Yes"
+        if re.search(r"relocation|relocate|open to.*(relocat|moving)", label, re.I):
+            return "Yes" if a.open_to_relocation else "No"
+        if re.search(
+            r"open to (working in.?person|in.?person.*office)|in.?person.*office.*time|"
+            r"office.*(\d+.*(time|percent)|in person)|in.person.*\d+",
+            label, re.I,
+        ):
+            return "Yes" if a.open_to_office_25 else "No"
+        if re.search(r"interviewed.*(before|previously)|previously interviewed|applied.*before",
+                     label, re.I):
+            return "No" if not a.interviewed_before else "Yes"
+        if re.search(r"active.*(security )?clearance|currently hold.*clearance",
+                     label, re.I):
+            return "Yes" if a.clearance_active else "No"
         return None
 
     def _clearance_level_note(self, label: str) -> str | None:

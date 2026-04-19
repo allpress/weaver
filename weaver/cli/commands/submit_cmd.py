@@ -37,7 +37,17 @@ from weaver.submitter.plan_builder import matches_curated_title, slugify
 
 DEFAULT_CONTEXT = "anthropic"
 DEFAULT_COMPANY = "Anthropic"
-DEFAULT_PREFIX = "anthropic"
+
+
+def _prefix_for(context: str) -> str:
+    """Plan-file prefix for a context.
+
+    Plans land at ``contexts/<context>/plans/<prefix>-<slug>.json``. We
+    use the context name verbatim as the prefix so per-context dirs
+    don't collide when multiple labs share the same job slug (e.g.
+    "applied-ai-engineer" at both Anthropic and Scale AI).
+    """
+    return context
 
 
 def _context_dir(context: str) -> Path:
@@ -112,7 +122,7 @@ def fetch(context: str, company: str, limit: int, fetch_all: bool, throttle_ms: 
                 click.echo(f"FAIL ({type(e).__name__}: {e})")
                 continue
             plan = builder.build(job, questions)
-            path = store.save(plan, prefix=DEFAULT_PREFIX)
+            path = store.save(plan, prefix=_prefix_for(context))
             click.echo(
                 f"ok  ({plan.answeredCount}/{plan.questionCount}, "
                 f"{len(plan.unansweredLabels)} unhandled)"
@@ -139,7 +149,7 @@ def fetch(context: str, company: str, limit: int, fetch_all: bool, throttle_ms: 
         "unique": len(unique),
         "generated": len(index_entries),
         "jobs": index_entries,
-    }, prefix=DEFAULT_PREFIX)
+    }, prefix=_prefix_for(context))
 
     click.echo("")
     click.echo(f"Wrote {len(index_entries)} plans + index to {plans_dir}")
@@ -155,7 +165,7 @@ def fetch(context: str, company: str, limit: int, fetch_all: bool, throttle_ms: 
 def list_cmd(context: str, approved_only: bool, as_json: bool) -> None:
     """Print every plan in the context with status."""
     store = PlanStore(_plans_dir(context))
-    plans = store.list(prefix=DEFAULT_PREFIX)
+    plans = store.list(prefix=_prefix_for(context))
     if approved_only:
         plans = [(s, p) for s, p in plans if p.approved and not p.submitted]
 
@@ -203,7 +213,7 @@ def serve(context: str, port: int) -> None:
     _serve(
         context_root=ctx_dir,
         port=port,
-        prefix=DEFAULT_PREFIX,
+        prefix=_prefix_for(context),
         regenerate_cmd=regenerate_cmd,
         apply_cmd_factory=apply_cmd_factory,
     )
@@ -231,14 +241,15 @@ def apply_cmd(context: str, slugs: tuple[str, ...], approved: bool,
     store = PlanStore(_plans_dir(context))
 
     picks: list[tuple[str, "JobPlan"]] = []   # type: ignore[name-defined]
+    prefix = _prefix_for(context)
     if slugs:
         for s in slugs:
-            p = store.load(s, prefix=DEFAULT_PREFIX)
+            p = store.load(s, prefix=prefix)
             if p is None:
                 raise click.ClickException(f"unknown slug: {s}")
             picks.append((s, p))
     elif approved:
-        picks = [(s, p) for s, p in store.list(prefix=DEFAULT_PREFIX)
+        picks = [(s, p) for s, p in store.list(prefix=prefix)
                  if p.approved and not p.submitted]
     else:
         raise click.ClickException("pass --slug <slug> or --approved")

@@ -74,6 +74,9 @@ class Applicant:
     additional_info: str = ""
     personal_preferences: str = ""
     deadlines: str = "No hard deadlines; flexible for the right role."
+    # Short technical-stack summary for "What's your core stack?" questions.
+    # Kept terse on purpose — the long version lives in the résumé.
+    technical_stack: str = ""
 
     # File paths (resolved against the context's applicant/ dir)
     resume_md: str = "resume.md"

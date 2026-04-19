@@ -243,6 +243,24 @@ class PlanBuilder:
         if bp is not None:
             return QuestionPlan(**base, proposedAnswer=bp["answer"], strategy=bp["strategy"])
 
+        # Conditional "If yes, please explain" sub-questions. These are
+        # meant to be filled only when the parent yes/no answered "Yes".
+        # Since we usually answer these parents "No" (not under a
+        # conflicting agreement, not previously interviewed, etc.),
+        # leaving the explanation blank is the correct behaviour. A
+        # severance-voice narrative here is actively harmful: it looks
+        # like the candidate is volunteering a conflict where none
+        # exists.
+        if re.search(
+            r"^\s*if (yes|so)\b|please (provide |give )?(further |additional )?"
+            r"(explanation|details|context).*below|explain (below|here|if so)",
+            label, re.I,
+        ):
+            return QuestionPlan(**base, proposedAnswer="",
+                                strategy="conditional-empty",
+                                note="conditional explanation field — left blank; "
+                                      "depends on parent yes/no answer")
+
         # Free-text questions with a yes/no intent. Greenhouse sometimes
         # surfaces these as ``input_text`` rather than ``multi_value_single_select``
         # (e.g. a simple text box asking "Are you open to relocation?"). Consult
@@ -327,6 +345,10 @@ class PlanBuilder:
             return {"answer": a.additional_info, "strategy": "precomputed"}
         if re.search(r"personal preferences", label, re.I):
             return {"answer": a.personal_preferences, "strategy": "precomputed"}
+        if re.search(r"(core )?technical stack|tech(nology)? stack|core stack|"
+                     r"primary (languages|stack|tools)|languages you (work|use)",
+                     label, re.I) and a.technical_stack:
+            return {"answer": a.technical_stack, "strategy": "precomputed"}
 
         if re.search(r"government.*agenc|federal.*agenc|which.*(agenc|department)|worked with.*(government|federal|dod|doj)", label, re.I):
             # For DoD / Federal roles, extend the clearance history with the
@@ -414,6 +436,17 @@ class PlanBuilder:
         if re.search(r"active.*(security )?clearance|currently hold.*clearance",
                      label, re.I):
             return "Yes" if a.clearance_active else "No"
+        # Employment conflict / existing-obligation questions: default No.
+        # Greenhouse forms pair these with an "If yes, please explain" field;
+        # the conditional handler below leaves that explanation blank.
+        if re.search(
+            r"bound by.*(agreement|contract|non.?compete|obligation)|"
+            r"(non.?compete|non.?disclosure|conflict).*agreement|"
+            r"currently.*(bound|obligated)|"
+            r"(have|do you have).*(non.?compete|ip agreement|conflicting)",
+            label, re.I,
+        ):
+            return "No"
         return None
 
     def _clearance_level_note(self, label: str) -> str | None:

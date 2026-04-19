@@ -36,12 +36,19 @@ import httpx
 
 
 BOARD_TOKENS: dict[str, str] = {
+    # AI labs (kept together, rank-ordered roughly by research)
     "Anthropic": "anthropic",
+    "Scale AI": "scaleai",
+    "Glean": "gleanwork",
+    "xAI": "xai",
+    "Fireworks AI": "fireworksai",
+    "Cresta": "cresta",
+    "CoreWeave": "coreweave",
+    "Together AI": "togetherai",
+    # Non-AI companies that came up during earlier probes
     "Reddit": "reddit",
     "Webflow": "webflow",
     "Mercury": "mercury",
-    "Scale AI": "scaleai",
-    "Together AI": "togetherai",
     "SmithRx": "smithrx",
     "ClickUp": "clickup",
     "Datadog": "datadoghq",

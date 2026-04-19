@@ -171,6 +171,47 @@ def test_select_visa_uses_profile_no():
     assert plan.strategy == "select-no"
 
 
+# --- employment conflict / non-compete ---
+
+def test_bound_by_agreements_defaults_no():
+    """Scale AI asks: 'Are you currently bound by any agreements with
+    a current or former employer?' The safe/accurate default for most
+    candidates is No. A generic 'Are you ...' fallback was previously
+    answering Yes, which is actively wrong."""
+    plan = _plan(_applicant(),
+                 _q("Are you currently bound by any agreements with a "
+                    "current or former employer?"))
+    assert plan.proposedAnswer == "No"
+    assert plan.strategy == "yesno-text-no"
+
+
+def test_noncompete_defaults_no():
+    plan = _plan(_applicant(),
+                 _q("Do you have a non-compete with your current employer?"))
+    assert plan.proposedAnswer == "No"
+
+
+# --- conditional "if yes, please explain" ---
+
+def test_conditional_if_yes_left_blank():
+    """Fields like 'If yes, please provide further explanation below'
+    should never get a severance-voice narrative — they're meant to be
+    filled only if the parent yes/no answered Yes. Left blank is
+    correct when the parent (usually) answers No."""
+    plan = _plan(_applicant(),
+                 _q("If yes, please provide further explanation below."))
+    assert plan.proposedAnswer == ""
+    assert plan.strategy == "conditional-empty"
+    assert plan.note and "conditional" in plan.note.lower()
+
+
+def test_conditional_please_explain_left_blank():
+    plan = _plan(_applicant(),
+                 _q("Please explain below if so."))
+    assert plan.proposedAnswer == ""
+    assert plan.strategy == "conditional-empty"
+
+
 # --- narrative questions still go to voice ---
 
 def test_narrative_question_still_voice():

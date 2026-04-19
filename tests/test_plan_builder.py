@@ -33,6 +33,8 @@ def _applicant(**overrides) -> Applicant:
         us_authorized=True, needs_sponsorship=False,
         open_to_relocation=True, open_to_office_25=True,
         interviewed_before=False, clearance_active=False,
+        gender="", race="", hispanic_or_latino="",
+        veteran_status="", disability_status="",
     )
     base.update(overrides)
     return Applicant(**base)
@@ -210,6 +212,76 @@ def test_conditional_please_explain_left_blank():
                  _q("Please explain below if so."))
     assert plan.proposedAnswer == ""
     assert plan.strategy == "conditional-empty"
+
+
+# --- EEOC self-identification ---
+
+def test_gender_uses_profile_when_disclosed():
+    plan = _plan(
+        _applicant(gender="Male"),
+        _q("Gender", ftype="multi_value_single_select",
+           options=["Male", "Female", "Decline to self-identify"]),
+    )
+    assert plan.strategy == "select-self-id-gender"
+    assert plan.proposedAnswer == "Male"
+
+
+def test_race_uses_profile_when_disclosed():
+    plan = _plan(
+        _applicant(race="White"),
+        _q("What is your race?", ftype="multi_value_single_select",
+           options=["White", "Black or African American", "Asian",
+                    "Decline to self-identify"]),
+    )
+    assert plan.strategy == "select-self-id-race"
+    assert plan.proposedAnswer == "White"
+
+
+def test_veteran_status_uses_profile_when_disclosed():
+    plan = _plan(
+        _applicant(veteran_status="I am not a protected veteran"),
+        _q("Are you a protected veteran?",
+           ftype="multi_value_single_select",
+           options=["I am a protected veteran", "I am not a protected veteran",
+                    "I don't wish to answer"]),
+    )
+    assert plan.strategy == "select-self-id-veteran"
+    assert plan.proposedAnswer == "I am not a protected veteran"
+
+
+def test_hispanic_latino_uses_profile_when_disclosed():
+    plan = _plan(
+        _applicant(hispanic_or_latino="No"),
+        _q("Are you Hispanic or Latino?",
+           ftype="multi_value_single_select",
+           options=["Yes", "No", "Decline to self-identify"]),
+    )
+    assert plan.strategy == "select-self-id-ethnicity"
+    assert plan.proposedAnswer == "No"
+
+
+def test_demographics_decline_when_profile_blank():
+    """Profile fields empty → fall back to Decline where possible."""
+    plan = _plan(
+        _applicant(),   # all EEOC fields blank
+        _q("Gender", ftype="multi_value_single_select",
+           options=["Male", "Female", "Decline to self-identify"]),
+    )
+    assert plan.strategy == "select-decline"
+    assert "decline" in plan.proposedAnswer.lower()
+
+
+def test_disability_still_declines_by_default():
+    """disability_status is blank by default — always declines."""
+    plan = _plan(
+        _applicant(),
+        _q("Do you have a disability?",
+           ftype="multi_value_single_select",
+           options=["Yes, I have a disability",
+                    "No, I do not have a disability",
+                    "I don't wish to answer"]),
+    )
+    assert plan.strategy == "select-decline"
 
 
 # --- narrative questions still go to voice ---

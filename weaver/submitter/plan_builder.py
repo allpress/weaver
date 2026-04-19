@@ -384,7 +384,52 @@ class PlanBuilder:
             if ts:
                 return {"answer": ts["label"], "value": ts["value"], "strategy": "select-yes"}
 
-        # Protected-class demographics → decline.
+        # Protected-class demographics. Consult the profile for any
+        # self-identification the candidate has chosen to disclose, and
+        # fall back to a Decline option where one exists.
+        a = self._app
+        if re.search(r"\bgender\b", label, re.I) and a.gender:
+            pick = _pick_option(values, lambda v: a.gender.lower() in v)
+            if pick:
+                return {"answer": pick["label"], "value": pick["value"],
+                        "strategy": "select-self-id-gender"}
+        if re.search(r"hispanic|latino|latinx", label, re.I) and a.hispanic_or_latino:
+            target = a.hispanic_or_latino.lower()
+            pick = _pick_option(values,
+                                 lambda v: v == target or v.startswith(target))
+            if pick:
+                return {"answer": pick["label"], "value": pick["value"],
+                        "strategy": "select-self-id-ethnicity"}
+        if re.search(r"\brace\b|racial", label, re.I) and a.race:
+            pick = _pick_option(values, lambda v: a.race.lower() in v)
+            if pick:
+                return {"answer": pick["label"], "value": pick["value"],
+                        "strategy": "select-self-id-race"}
+        if re.search(r"\bveteran\b|protected veteran", label, re.I) and a.veteran_status:
+            target = a.veteran_status.lower()
+            # Negation in the target ("not a veteran") must steer to the
+            # negative option — a plain substring match picks the first
+            # option that shares any word and gets it wrong. Try in
+            # precedence order: exact → contains whole target → negation-
+            # aware → loose word match.
+            pick = _pick_option(values, lambda v: v == target)
+            if pick is None:
+                pick = _pick_option(values, lambda v: target in v)
+            if pick is None:
+                negated = any(w in target for w in ("not ", "n't", " no "))
+                if negated:
+                    pick = _pick_option(values, lambda v: (
+                        "not " in v or "n't" in v or v.startswith("no ")
+                    ))
+                else:
+                    pick = _pick_option(values, lambda v: (
+                        "not " not in v and "n't" not in v
+                        and not v.startswith("no ")
+                        and ("veteran" in v or "protected" in v)
+                    ))
+            if pick is not None:
+                return {"answer": pick["label"], "value": pick["value"],
+                        "strategy": "select-self-id-veteran"}
         if re.search(r"gender|race|ethnicity|veteran|disability|demographic|hispanic|latin",
                      label, re.I):
             dec = _pick_option(values, lambda v: (

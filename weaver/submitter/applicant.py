@@ -68,6 +68,15 @@ class Applicant:
     # as DoD/Federal/Defense/Public-Sector. Left blank otherwise.
     dod_experience: str = ""
 
+    # EEOC self-identification. Left blank by default → the plan-builder
+    # picks a "Decline to self-identify" option where one exists. Fill
+    # any of these in profile.yaml to have the builder answer truthfully.
+    gender: str = ""             # e.g. "Male", "Female", "Non-binary"
+    race: str = ""               # e.g. "White", "Asian", "Black or African American"
+    hispanic_or_latino: str = "" # "Yes" / "No" (Hispanic/Latino is a separate question from race)
+    veteran_status: str = ""     # "I am not a veteran" / "I am a protected veteran" etc.
+    disability_status: str = ""  # left blank by default — most sensitive
+
     # Boilerplate free-text
     how_heard: str = ""
     interviewed_before: bool = False

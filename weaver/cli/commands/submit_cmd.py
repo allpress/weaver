@@ -224,7 +224,7 @@ def apply_cmd(context: str, slugs: tuple[str, ...], approved: bool,
     Default is fill-and-pause: the browser opens, fills every mapped field,
     stops before Submit. Pass ``--send`` to actually submit.
     """
-    from wayfinder.walkers import GreenhouseApplicantWayfinder
+    from wayfinder.walkers import GreenhouseApplicantPlain
 
     applicant_dir = _applicant_dir(context)
     applicant = load_applicant(applicant_dir)
@@ -254,7 +254,7 @@ def apply_cmd(context: str, slugs: tuple[str, ...], approved: bool,
     if not resume_pdf_str:
         click.echo(f"warn: resume PDF not found at {resume_pdf} — continuing without upload")
 
-    w = GreenhouseApplicantWayfinder()
+    w = GreenhouseApplicantPlain()
 
     from dataclasses import asdict as _asdict
     for slug, plan in picks:
